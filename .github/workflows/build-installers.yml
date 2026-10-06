@@ -34,6 +34,7 @@ jobs:
         with:
           toolchain: '1.99.0'
           targets: ${{ matrix.target }}
+          components: rustfmt, clippy
       - run: npm ci
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
