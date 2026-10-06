@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "App events, presentation and privileged operations through restricted backend commands.",
+  "windows": ["main"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten", "allow-bootstrap", "allow-open-settings", "allow-drag-overlay", "allow-translate", "allow-cancel-translation", "allow-save-settings", "allow-set-credential", "allow-remove-credential", "allow-inspect-provider", "allow-local-engine-status", "allow-install-local-model", "allow-copy-text", "allow-insert-translation", "allow-hide-overlay", "allow-clear-session", "allow-pause-shortcuts"]
+}

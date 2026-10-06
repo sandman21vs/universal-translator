@@ -1,0 +1,32 @@
+import { useEffect, useState } from 'react';
+import { Download, LoaderCircle, Check, RefreshCw } from 'lucide-react';
+import { command, message } from '../bridge';
+
+interface Model { id: string; name: string; source: string; target: string; version: string; url: string; bytes: number; sha256: string; license: string; licenseUrl: string; licenseEvidence: string; attribution: string; installed: boolean }
+export default function LocalModels({ source, target }: { source: string; target: string }) {
+  const [models, setModels] = useState<Model[]>([]);
+  const [busy, setBusy] = useState<string | null>('status');
+  const [notice, setNotice] = useState('');
+  async function refresh() { const result = await command<{ models: Model[] }>('local_engine_status'); setModels(result.models); }
+  useEffect(() => { let alive = true; void command<{ models: Model[] }>('local_engine_status').then(result => { if (alive) setModels(result.models); }).catch(e => { if (alive) setNotice(message(e)); }).finally(() => { if (alive) setBusy(null); }); return () => { alive = false; }; }, []);
+  async function install(model: Model) {
+    setBusy(model.id); setNotice(`Baixando ${model.name}. Aguarde a verificação e instalação…`);
+    try { await command('install_local_model', { modelId: model.id }); await refresh(); setNotice(`${model.name} instalado. A tradução funciona sem internet.`); }
+    catch (e) { setNotice(message(e)); } finally { setBusy(null); }
+  }
+  const from = source.split('-')[0], to = target.split('-')[0];
+  const has = (a: string, b: string) => models.some(m => m.source === a && m.target === b && m.installed);
+  const route = from === 'auto' ? 'Escolha o idioma de origem. A detecção automática ainda não está disponível neste motor.' : from === to ? 'Origem e destino são o mesmo idioma.' : has(from, to) ? `Par direto instalado: ${from} → ${to}.` : has(from, 'en') && has('en', to) ? `Tradução via inglês: ${from} → en → ${to}. Essa etapa intermediária pode reduzir a qualidade.` : `Par ${from} → ${to} ainda não instalado. Para português ↔ alemão, instale os dois modelos da rota via inglês.`;
+  return <div className="credential-box" aria-label="Modelos locais">
+    <h3>Idiomas no seu computador</h3>
+    <p className="help">O motor vem com o app. Baixe somente os idiomas desejados; depois, seu texto é traduzido no computador, sem servidor, chave de API ou GPU.</p>
+    <p role="status">{route}</p>
+    {models.map(model => <div key={model.id} className="local-model">
+      <div className="button-row"><strong>{model.name}</strong><button className="secondary" disabled={!!busy || model.installed} onClick={() => void install(model)}>{busy === model.id ? <LoaderCircle size={15} className="spin" /> : model.installed ? <Check size={15} /> : <Download size={15} />}{model.installed ? 'Instalado' : `Baixar · ${(model.bytes / 1_000_000).toFixed(1)} MB`}</button></div>
+      <p className="help">Versão {model.version} · {model.license}</p>
+      <details><summary>Origem, licença e verificação</summary><p className="help">{model.url}<br />Tamanho: {model.bytes.toLocaleString('pt-BR')} bytes<br />SHA-256: <code>{model.sha256}</code><br />Licença: {model.licenseUrl}<br />Evidência: {model.licenseEvidence}<br />{model.attribution}</p></details>
+    </div>)}
+    <button className="text-button" disabled={!!busy} onClick={() => { setBusy('status'); void refresh().catch(e => setNotice(message(e))).finally(() => setBusy(null)); }}><RefreshCw size={14} />Atualizar modelos instalados</button>
+    {notice && <p role="status" className="notice">{notice}</p>}
+  </div>;
+}
