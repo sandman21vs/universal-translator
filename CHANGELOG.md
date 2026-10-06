@@ -1,6 +1,11 @@
 <!-- CHANGELOG.md -->
 # Changelog
 
+## 0.1.1 — 2026-10-06
+
+- macOS: o painel compacto abre junto ao cursor, na mesa em uso e sobre aplicativos em tela cheia.
+- macOS: Inserir/Enter digita a tradução no aplicativo de origem (requer permissão de Acessibilidade).
+
 ## Motor local integrado — 05/10/2026
 
 - Novo padrão em instalações novas: CTranslate2/SentencePiece com modelos Argos em sidecar empacotado, sem servidor externo.

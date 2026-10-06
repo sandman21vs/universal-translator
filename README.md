@@ -3,7 +3,7 @@
 
 Aplicativo desktop em desenvolvimento para compor mensagens, traduzir e revisar antes de copiar ou inserir. Tauri 2 + Rust + React/TypeScript. Interface inicial em pt-BR; idiomas PT, EN, DE, ES, FR e IT. Código próprio MIT; modelos e dependências conservam suas licenças.
 
-**Versão inicial, não um MVP universal concluído.** Ollama foi utilizado realmente neste Windows; os outros providers têm implementação HTTP e contratos com servidor de teste, sem validação com contas pagas. Seleção/inserção Windows têm adaptador nativo, mas o QA externo completo está pendente. macOS/Linux permitem tradução/cópia; seleção/inserção global ainda não implementadas.
+**Versão inicial, não um MVP universal concluído.** Ollama foi utilizado realmente neste Windows; os outros providers têm implementação HTTP e contratos com servidor de teste, sem validação com contas pagas. Seleção/inserção Windows têm adaptador nativo, mas o QA externo completo está pendente. macOS abre o painel junto ao cursor em qualquer mesa (inclusive sobre apps em tela cheia) e insere a tradução no aplicativo de origem com permissão de Acessibilidade; seleção global ainda não implementada. Linux permite tradução/cópia; seleção/inserção global ainda não implementadas.
 
 ## Desenvolvimento
 

@@ -1,5 +1,9 @@
 use crate::core::AppResult;
-use tauri::{window::Color, LogicalSize, Manager, PhysicalPosition, PhysicalSize};
+#[cfg(target_os = "macos")]
+use tauri::LogicalPosition;
+use tauri::{window::Color, LogicalSize, Manager};
+#[cfg(not(target_os = "macos"))]
+use tauri::{PhysicalPosition, PhysicalSize};
 
 pub const WIDTH: f64 = 460.0;
 pub const HEIGHT: f64 = 340.0;
@@ -38,6 +42,28 @@ pub fn configure(app: &tauri::AppHandle, compact: bool) -> AppResult<()> {
     update().map_err(|_| "Não foi possível ajustar a janela do tradutor.".into())
 }
 
+// macOS remembers the Space where a hidden window was last shown and switches to it when the
+// app activates. Joining every Space and ordering the window in before activation keeps the
+// user on the Space where they are typing.
+#[cfg(target_os = "macos")]
+pub fn bring_to_active_space(window: &tauri::WebviewWindow) {
+    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+    let handle = window.clone();
+    let _ = window.run_on_main_thread(move || {
+        let Ok(pointer) = handle.ns_window() else {
+            return;
+        };
+        // SAFETY: Tauri owns this NSWindow for as long as `handle` lives, and AppKit is only
+        // touched from the main thread.
+        let ns_window: &NSWindow = unsafe { &*pointer.cast() };
+        ns_window.setCollectionBehavior(
+            NSWindowCollectionBehavior::CanJoinAllSpaces
+                | NSWindowCollectionBehavior::FullScreenAuxiliary,
+        );
+        ns_window.orderFrontRegardless();
+    });
+}
+
 fn bounds(
     cursor: (i32, i32),
     origin: (i32, i32),
@@ -51,6 +77,7 @@ fn bounds(
     ((left, top), (width, height))
 }
 
+#[cfg(not(target_os = "macos"))]
 pub fn position(app: &tauri::AppHandle) {
     let (Some((x, y)), Some(window)) = (
         crate::platform::cursor_position(),
@@ -82,6 +109,61 @@ pub fn position(app: &tauri::AppHandle) {
     )));
     let _ = window.set_size(PhysicalSize::new(width, height));
     let _ = window.set_position(PhysicalPosition::new(left, top));
+}
+
+/// Physical value reported at `scale` back to points, the unit macOS shares across displays.
+#[cfg(target_os = "macos")]
+fn points(value: f64, scale: f64) -> f64 {
+    value / scale
+}
+
+// The runtime scales the cursor by the primary display and each monitor by its own factor,
+// so mixed-DPI setups only line up once everything is converted to points.
+#[cfg(target_os = "macos")]
+pub fn position(app: &tauri::AppHandle) {
+    let (Ok(cursor), Ok(Some(primary)), Some(window)) = (
+        app.cursor_position(),
+        app.primary_monitor(),
+        app.get_webview_window("main"),
+    ) else {
+        return;
+    };
+    let x = points(cursor.x, primary.scale_factor());
+    let y = points(cursor.y, primary.scale_factor());
+    let Ok(monitors) = window.available_monitors() else {
+        return;
+    };
+    let Some(monitor) = monitors.iter().find(|m| {
+        let scale = m.scale_factor();
+        let left = points(m.position().x as f64, scale);
+        let top = points(m.position().y as f64, scale);
+        x >= left
+            && y >= top
+            && x < left + points(m.size().width as f64, scale)
+            && y < top + points(m.size().height as f64, scale)
+    }) else {
+        return;
+    };
+    let area = monitor.work_area();
+    let scale = monitor.scale_factor();
+    let ((left, top), (width, height)) = bounds(
+        (x.round() as i32, y.round() as i32),
+        (
+            points(area.position.x as f64, scale).round() as i32,
+            points(area.position.y as f64, scale).round() as i32,
+        ),
+        (
+            points(area.size.width as f64, scale) as u32,
+            points(area.size.height as f64, scale) as u32,
+        ),
+        1.0,
+    );
+    let _ = window.set_min_size(Some(LogicalSize::new(
+        380.0_f64.min(width as f64),
+        280.0_f64.min(height as f64),
+    )));
+    let _ = window.set_size(LogicalSize::new(width as f64, height as f64));
+    let _ = window.set_position(LogicalPosition::new(left as f64, top as f64));
 }
 
 #[cfg(test)]

@@ -415,6 +415,13 @@ fn drag_overlay(window: tauri::WebviewWindow) -> AppResult<()> {
 }
 fn show(app: &tauri::AppHandle, event: &str) {
     let compact = event != "settings";
+    // A Dock app cannot draw over another app's full-screen Space; an accessory (tray) app can.
+    #[cfg(target_os = "macos")]
+    let _ = app.set_activation_policy(if compact {
+        tauri::ActivationPolicy::Accessory
+    } else {
+        tauri::ActivationPolicy::Regular
+    });
     if let Err(error) = overlay::configure(app, compact) {
         let _ = app.emit("desktop-error", error);
     } else {
@@ -427,6 +434,8 @@ fn show(app: &tauri::AppHandle, event: &str) {
     }
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.emit(event, ());
+        #[cfg(target_os = "macos")]
+        overlay::bring_to_active_space(&w);
         let _ = w.show();
         let _ = w.unminimize();
         let _ = w.set_focus();

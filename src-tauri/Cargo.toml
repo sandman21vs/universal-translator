@@ -1,7 +1,7 @@
 # src-tauri/Cargo.toml
 [package]
 name = "universal-translator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Private desktop translation"
 edition = "2021"
 rust-version = "1.85"
@@ -36,6 +36,11 @@ futures-util = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Ole", "Win32_System_Variant", "Win32_UI_Accessibility", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "libc", "NSWindow", "NSResponder", "NSWorkspace", "NSRunningApplication"] }
+core-graphics = "0.25"
+core-foundation = "0.10"
 
 [dev-dependencies]
 wiremock = "0.6"
