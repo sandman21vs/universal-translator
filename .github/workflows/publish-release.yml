@@ -1,0 +1,51 @@
+# .github/workflows/publish-release.yml
+name: Draft release from built installers
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful "Prepare unsigned installers" run to take the installers from
+        required: true
+      tag:
+        description: Release tag, e.g. v0.1.0
+        required: true
+permissions:
+  contents: write
+  actions: read
+jobs:
+  draft:
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_ID: ${{ inputs.run_id }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Download bundles
+        run: gh run download "$RUN_ID" --dir artifacts
+      - name: Collect installers
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          mkdir out
+          pick() { # pick <artifact> <glob> <asset name>
+            file="$(find "artifacts/unsigned-$1" -type f -name "$2" | head -n 1)"
+            test -n "$file" || { echo "missing $2 in $1"; exit 1; }
+            cp "$file" "out/universal-translator_${version}_$3"
+          }
+          pick x86_64-pc-windows-msvc '*-setup.exe' windows_x64-setup.exe
+          pick x86_64-pc-windows-msvc '*.msi' windows_x64.msi
+          pick aarch64-apple-darwin '*.dmg' macos_arm64.dmg
+          pick x86_64-apple-darwin '*.dmg' macos_x64.dmg
+          pick x86_64-unknown-linux-gnu '*.deb' linux_amd64.deb
+          pick x86_64-unknown-linux-gnu '*.rpm' linux_x86_64.rpm
+          pick x86_64-unknown-linux-gnu '*.AppImage' linux_x86_64.AppImage
+          (cd out && sha256sum * > SHA256SUMS.txt)
+          du -sh artifacts/*/*
+          ls -la out
+      - name: Create draft release
+        run: |
+          set -euo pipefail
+          commit="$(gh run view "$RUN_ID" --json headSha --jq .headSha)"
+          gh release create "$TAG" out/* --draft --target "$commit" --title "Universal Translator ${TAG#v}" --notes "Unsigned installers built by run $RUN_ID."
+# Draft only: publishing stays a manual step. No signing or notarization.
