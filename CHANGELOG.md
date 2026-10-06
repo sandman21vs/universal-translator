@@ -5,6 +5,8 @@
 
 - macOS: o painel compacto abre junto ao cursor, na mesa em uso e sobre aplicativos em tela cheia.
 - macOS: Inserir/Enter digita a tradução no aplicativo de origem (requer permissão de Acessibilidade).
+- macOS: fechar o painel devolve o foco ao aplicativo de origem; superfície nativa com desfoque e cantos arredondados.
+- Painel compacto redesenhado em tons de cinza: duas linhas (idioma + texto, idioma + tradução), configurações e copiar. Enter insere ou, sem destino, copia; Esc fecha.
 
 ## Motor local integrado — 05/10/2026
 

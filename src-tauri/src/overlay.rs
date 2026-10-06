@@ -5,8 +5,10 @@ use tauri::{window::Color, LogicalSize, Manager};
 #[cfg(not(target_os = "macos"))]
 use tauri::{PhysicalPosition, PhysicalSize};
 
-pub const WIDTH: f64 = 460.0;
-pub const HEIGHT: f64 = 340.0;
+pub const WIDTH: f64 = 500.0;
+pub const HEIGHT: f64 = 124.0;
+const MIN_WIDTH: f64 = 360.0;
+const MIN_HEIGHT: f64 = 100.0;
 
 pub fn configure(app: &tauri::AppHandle, compact: bool) -> AppResult<()> {
     let window = app
@@ -23,15 +25,26 @@ pub fn configure(app: &tauri::AppHandle, compact: bool) -> AppResult<()> {
         window.set_skip_taskbar(compact)?;
         window.set_maximizable(!compact)?;
         window.set_shadow(true)?;
-        window.set_background_color(Some(if compact && cfg!(windows) {
-            Color(0, 0, 0, 0)
-        } else {
-            Color(16, 22, 28, 255)
+        window.set_background_color(Some(
+            if compact && cfg!(any(windows, target_os = "macos")) {
+                Color(0, 0, 0, 0)
+            } else {
+                Color(16, 22, 28, 255)
+            },
+        ))?;
+        // The quick panel is a native blurred, rounded surface; the full window stays opaque.
+        #[cfg(target_os = "macos")]
+        window.set_effects(compact.then(|| {
+            tauri::window::EffectsBuilder::new()
+                .effect(tauri::window::Effect::Popover)
+                .state(tauri::window::EffectState::Active)
+                .radius(12.0)
+                .build()
         }))?;
         if compact {
             window.set_size(LogicalSize::new(WIDTH, HEIGHT))?;
-            window.set_min_size(Some(LogicalSize::new(380.0, 280.0)))?;
-            window.set_max_size(Some(LogicalSize::new(640.0, 480.0)))?;
+            window.set_min_size(Some(LogicalSize::new(MIN_WIDTH, MIN_HEIGHT)))?;
+            window.set_max_size(Some(LogicalSize::new(720.0, 480.0)))?;
         } else {
             window.set_size(LogicalSize::new(820.0, 740.0))?;
             window.set_min_size(Some(LogicalSize::new(540.0, 580.0)))?;
@@ -104,8 +117,8 @@ pub fn position(app: &tauri::AppHandle) {
         scale,
     );
     let _ = window.set_min_size(Some(LogicalSize::new(
-        380.0_f64.min(width as f64 / scale),
-        280.0_f64.min(height as f64 / scale),
+        MIN_WIDTH.min(width as f64 / scale),
+        MIN_HEIGHT.min(height as f64 / scale),
     )));
     let _ = window.set_size(PhysicalSize::new(width, height));
     let _ = window.set_position(PhysicalPosition::new(left, top));
@@ -159,8 +172,8 @@ pub fn position(app: &tauri::AppHandle) {
         1.0,
     );
     let _ = window.set_min_size(Some(LogicalSize::new(
-        380.0_f64.min(width as f64),
-        280.0_f64.min(height as f64),
+        MIN_WIDTH.min(width as f64),
+        MIN_HEIGHT.min(height as f64),
     )));
     let _ = window.set_size(LogicalSize::new(width as f64, height as f64));
     let _ = window.set_position(LogicalPosition::new(left as f64, top as f64));
@@ -172,7 +185,7 @@ mod tests {
     #[test]
     fn fits_negative_monitor_coordinates_and_dpi_without_covering_taskbar() {
         let ((x, y), (w, h)) = bounds((-5, 1040), (-1920, 0), (1920, 1040), 1.5);
-        assert_eq!((w, h), (690, 510));
+        assert_eq!((w, h), (750, 186));
         assert!(x >= -1920 && x + w as i32 <= 0);
         assert!(y >= 0 && y + h as i32 <= 1040);
         let ((x, y), (w, h)) = bounds((310, 220), (0, 0), (320, 240), 2.0);

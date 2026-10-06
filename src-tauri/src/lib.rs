@@ -390,7 +390,11 @@ fn hide_overlay(app: tauri::AppHandle, state: State<AppState>) -> AppResult<()> 
     app.get_webview_window("main")
         .ok_or("Janela indisponível.")?
         .hide()
-        .map_err(|_| "Falha ao ocultar janela.".into())
+        .map_err(|_| "Falha ao ocultar janela.")?;
+    // Hand keyboard focus back to the app the user was typing in.
+    #[cfg(target_os = "macos")]
+    let _ = app.hide();
+    Ok(())
 }
 #[tauri::command]
 fn clear_session(state: State<AppState>) -> AppResult<()> {
@@ -435,7 +439,10 @@ fn show(app: &tauri::AppHandle, event: &str) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.emit(event, ());
         #[cfg(target_os = "macos")]
-        overlay::bring_to_active_space(&w);
+        {
+            let _ = app.show();
+            overlay::bring_to_active_space(&w);
+        }
         let _ = w.show();
         let _ = w.unminimize();
         let _ = w.set_focus();
@@ -445,8 +452,18 @@ fn open_compose(app: &tauri::AppHandle) {
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
         let target = tauri::async_runtime::spawn_blocking(NativeDesktop::capture).await;
+        // Pressing the shortcut again over the open panel must not drop the captured target.
+        let open = handle
+            .get_webview_window("main")
+            .and_then(|w| w.is_visible().ok())
+            .unwrap_or(false)
+            && handle.state::<AppState>().compact.load(Ordering::SeqCst);
         if let Ok(mut saved) = handle.state::<AppState>().target.lock() {
-            *saved = target.ok().and_then(Result::ok);
+            match target.ok().and_then(Result::ok) {
+                Some(target) => *saved = Some(target),
+                None if open => {}
+                None => *saved = None,
+            }
         }
         show(&handle, "compose");
     });
@@ -541,11 +558,11 @@ pub fn run() {
                 shortcut_error: Mutex::new(None),
                 paused: Mutex::new(false),
             });
-            // Native transparency is enabled at creation on Windows. The full
-            // interface paints an opaque background; only the compact panel
+            // Native transparency is enabled at creation on Windows and macOS. The
+            // full interface paints an opaque background; only the compact panel
             // exposes alpha. Other platforms keep the existing opaque surface.
             tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
-                .transparent(cfg!(windows))
+                .transparent(cfg!(any(windows, target_os = "macos")))
                 .background_color(tauri::window::Color(0, 0, 0, 0))
                 .build()?;
             *app.state::<AppState>()
