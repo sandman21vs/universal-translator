@@ -7,6 +7,8 @@
 - macOS: Inserir/Enter digita a tradução no aplicativo de origem (requer permissão de Acessibilidade).
 - macOS: fechar o painel devolve o foco ao aplicativo de origem; superfície nativa com desfoque e cantos arredondados.
 - Painel compacto redesenhado em tons de cinza: duas linhas (idioma + texto, idioma + tradução), configurações e copiar. Enter insere ou, sem destino, copia; Esc fecha.
+- Janela principal em tons de cinza no estilo dos Ajustes do macOS: seletor Traduzir/Configurações e cartão único com texto e tradução.
+- Configurações simplificadas: idiomas, motor de tradução (No computador ou Usar IA), geral e uma seção Avançado recolhida. As mudanças são salvas automaticamente.
 
 ## Motor local integrado — 05/10/2026
 

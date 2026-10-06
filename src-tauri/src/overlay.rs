@@ -29,7 +29,7 @@ pub fn configure(app: &tauri::AppHandle, compact: bool) -> AppResult<()> {
             if compact && cfg!(any(windows, target_os = "macos")) {
                 Color(0, 0, 0, 0)
             } else {
-                Color(16, 22, 28, 255)
+                Color(30, 30, 30, 255)
             },
         ))?;
         // The quick panel is a native blurred, rounded surface; the full window stays opaque.
