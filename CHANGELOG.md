@@ -1,6 +1,10 @@
 <!-- CHANGELOG.md -->
 # Changelog
 
+## Não publicado
+
+- Motor local: quando o modelo descarta orações de uma frase longa, a frase é retraduzida oração por oração e o resultado mais completo é usado.
+
 ## 0.1.1 — 2026-10-06
 
 - macOS: o painel compacto abre junto ao cursor, na mesa em uso e sobre aplicativos em tela cheia.

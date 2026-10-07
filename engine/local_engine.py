@@ -74,6 +74,16 @@ def install(root, request):
     return {"installed": True}
 
 
+def clauses(sentence):
+    """Split at clause punctuation, tolerating a space typed before it."""
+    return re.split(r"(?<=[,;:])\s+", re.sub(r"\s+([,;:])", r"\1", sentence))
+
+
+def dropped(source_tokens, output_tokens):
+    """A complete translation between these languages is rarely under 70% of its source length."""
+    return len(output_tokens) < 0.7 * len(source_tokens)
+
+
 def translate(root, request):
     source, target, text = request["source"].split("-")[0], request["target"].split("-")[0], request["text"]
     if source == "auto":
@@ -108,14 +118,24 @@ def translate(root, request):
             tokens = [tokenizer.encode(s, out_type=str) for s in sentences]
             if any(len(t) > 1024 for t in tokens):
                 raise ValueError("Uma frase excede o limite do motor local. Divida em frases menores.")
-            batches = translator.translate_batch(tokens, beam_size=4, replace_unknowns=True, max_input_length=1024, max_decoding_length=2048)
-            if any(len(b.hypotheses[0]) >= 2048 for b in batches):
+            options = {"beam_size": 4, "replace_unknowns": True, "max_input_length": 1024, "max_decoding_length": 2048}
+            outputs = [b.hypotheses[0] for b in translator.translate_batch(tokens, **options)]
+            if any(len(o) >= 2048 for o in outputs):
                 raise ValueError("Tradução local incompleta. Divida o texto em partes menores.")
+            # These small models sometimes drop whole clauses of a long run-on sentence.
+            # When the output is far shorter than its source, translate clause by clause
+            # and keep that result if it carries more of the text.
+            for position, sentence in enumerate(sentences):
+                parts = clauses(sentence)
+                if len(parts) > 1 and dropped(tokens[position], outputs[position]):
+                    pieces = [b.hypotheses[0] for b in translator.translate_batch([tokenizer.encode(p, out_type=str) for p in parts], **options)]
+                    if sum(map(len, pieces)) > len(outputs[position]):
+                        outputs[position] = [piece for part in pieces for piece in part]
             leading = paragraph[:len(paragraph) - len(paragraph.lstrip())]
             trailing = paragraph[len(paragraph.rstrip()):]
             # Some OPUS vocabularies emit literal SentencePiece space markers.
             # Normalize those markers only; underscores in identifiers stay intact.
-            paragraphs[index] = leading + " ".join(tokenizer.decode(b.hypotheses[0]).replace("▁", " ").lstrip(" ") for b in batches) + trailing
+            paragraphs[index] = leading + " ".join(tokenizer.decode(o).replace("▁", " ").lstrip(" ") for o in outputs) + trailing
         text = "".join(paragraphs)
         del translator
     return {"text": text}
