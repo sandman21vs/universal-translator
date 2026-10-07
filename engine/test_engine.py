@@ -56,5 +56,13 @@ class InstallationTests(unittest.TestCase):
                 worker.translate(Path(temporary), {"source": "pt-BR", "target": "en-US", "text": "Olá"})
 
 
+class ClauseFallbackTests(unittest.TestCase):
+    def test_clause_split_and_truncation_threshold(self):
+        self.assertEqual(worker.clauses("vendo os memes , tenho que parar; depois volto"), ["vendo os memes,", "tenho que parar;", "depois volto"])
+        self.assertEqual(worker.clauses("Bom dia!"), ["Bom dia!"])
+        self.assertTrue(worker.dropped(["t"] * 28, ["t"] * 11))
+        self.assertFalse(worker.dropped(["t"] * 20, ["t"] * 16))
+
+
 if __name__ == "__main__":
     unittest.main()
